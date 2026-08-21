@@ -1,0 +1,35 @@
+my-hackathon-project/
+├── .gitignore
+├── README.md
+├── frontend/                  # Vite + React
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── package.json
+│   ├── vite.config.js
+│   └── .env.example
+└── backend/                   # FastAPI
+    ├── app/
+    │   ├── _init_.py
+    │   ├── main.py
+    │   ├── api/
+    │   │   ├── _init_.py
+    │   │   └── routes/
+    │   │       └── _init_.py
+    │   ├── core/
+    │   │   ├── _init_.py
+    │   │   └── config.py
+    │   ├── models/
+    │   │   └── _init_.py
+    │   └── schemas/
+    │       └── _init_.py
+    ├── tests/
+    ├── requirements.txt
+    ├── .env.example
+    └── Dockerfile
