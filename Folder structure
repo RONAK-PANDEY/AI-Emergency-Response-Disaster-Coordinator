@@ -32,4 +32,4 @@ my-hackathon-project/
     ├── tests/
     ├── requirements.txt
     ├── .env.example
-    └── Dockerfile
+    └── Dockerfil
