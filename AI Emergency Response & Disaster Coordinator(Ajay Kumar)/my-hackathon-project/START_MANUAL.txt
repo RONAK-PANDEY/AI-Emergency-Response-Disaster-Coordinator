@@ -1,0 +1,43 @@
+Quick start instructions for the Emergency Response project
+
+Files created in the project root:
+  start_backend.bat   - start backend (uses venv if present)
+  start_frontend.bat  - start frontend (runs npm install if node_modules missing)
+  start_all.bat       - open two windows and run both scripts
+
+How to use
+- Double-click start_all.bat to open two terminals and launch both backend and frontend.
+- Or double-click start_backend.bat to run only the backend, and start_frontend.bat to run only the frontend.
+
+What the scripts do
+- start_backend.bat:
+  * cd to the backend folder
+  * activate venv if "venv\Scripts\activate.bat" exists
+  * run the virtualenv python (venv\Scripts\python.exe) or system python to start Uvicorn:
+      python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+- start_frontend.bat:
+  * cd to the frontend folder
+  * if node_modules is missing, runs npm install
+  * runs: npm run dev -- --host 0.0.0.0 --port 3000
+
+Notes and troubleshooting
+- Node.js and Python must be installed on the machine.
+- For backend virtualenv: create it and install dependencies if you haven't already:
+    cd backend
+    python -m venv venv
+    call venv\Scripts\activate.bat
+    pip install -r requirements.txt
+
+- If you see errors related to running scripts in PowerShell, double-click the .bat files from Explorer instead of running in constrained PowerShell. The batch files use cmd.exe (they call cmd /k when starting new windows).
+- If your project path contains special characters (like &), the batch scripts use quoted paths to avoid problems. If you still encounter issues, run the steps manually from a cmd window using the commands above.
+
+Advanced
+- To run frontend as a production build, run from frontend folder:
+    npm run build
+    npm run preview
+
+- To run backend without reload (production-like):
+    python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+If you want, I can also create PowerShell equivalents (.ps1) or short desktop shortcuts that run these scripts with a single click.
