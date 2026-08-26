@@ -1,0 +1,40 @@
+================================================================================
+CITIZEN EMERGENCY REPORTER PORTAL - STARTUP GUIDE
+================================================================================
+
+METHOD 1: 1-CLICK LAUNCHERS (DOUBLE-CLICK IN WINDOWS EXPLORER)
+--------------------------------------------------------------------------------
+1. start_all.bat
+   - Starts BOTH Shared Backend (:8000) and Citizen Frontend (:5174).
+   - Automatically opens your browser at http://localhost:5174.
+
+2. start_backend.bat
+   - Starts ONLY the Shared FastAPI Backend on http://localhost:8000.
+
+3. start_frontend.bat
+   - Starts ONLY the Citizen Frontend on http://localhost:5174.
+
+
+METHOD 2: MANUAL TERMINAL STARTUP
+--------------------------------------------------------------------------------
+[BACKEND (Port 8000)]
+1. Open Command Prompt:
+   cd "..\my-hackathon-project\backend"
+2. Activate virtual environment:
+   venv\Scripts\activate.bat
+3. Start server:
+   python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+
+[FRONTEND (Port 5174)]
+1. Open a second Command Prompt:
+   cd "reporter-portal"
+2. Start Vite server:
+   node ./node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5174
+
+
+DEMO CREDENTIALS:
+--------------------------------------------------------------------------------
+- Identifier: citizen@demo.in
+- OTP Code:   123456
+- Name:       Aarav Singh (Verified Citizen)
+================================================================================
