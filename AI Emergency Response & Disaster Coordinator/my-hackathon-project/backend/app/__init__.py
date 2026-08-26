@@ -1,0 +1,2 @@
+"""Emergency response backend package."""
+

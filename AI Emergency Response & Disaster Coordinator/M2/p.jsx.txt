@@ -1,0 +1,308 @@
+import 'leaflet/dist/leaflet.css';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+
+// Helper to create a simple colored pin icon using divIcon (no external image assets needed)
+function createColorIcon(color) {
+  return L.divIcon({
+    className: 'custom-div-icon',
+    html: `
+      <div style="
+        background-color: ${color};
+        width: 24px;
+        height: 24px;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        border: 2px solid #ffffff;
+        box-shadow: 0 0 4px rgba(0,0,0,0.5);
+      "></div>
+    `,
+    iconSize: [24, 24],
+    iconAnchor: [12, 24],
+    popupAnchor: [0, -24],
+  });
+}
+
+// Icon by incident type (emoji only now; color comes from severity)
+const TYPE_ICONS = {
+  fire: { emoji: '🔥' },
+  flood: { emoji: '🌊' },
+  accident: { emoji: '🚧' },
+};
+const DEFAULT_ICON = { emoji: '📍' };
+
+function getTypeEmoji(type) {
+  const key = (type || '').toLowerCase();
+  return (TYPE_ICONS[key] || DEFAULT_ICON).emoji;
+}
+
+// Severity → hex color mapping
+function getSeverityColor(severity) {
+  switch ((severity || '').toLowerCase()) {
+    case 'critical':
+      return '#ff0000';
+    case 'high':
+      return '#ffa500';
+    case 'medium':
+      return '#ffff00';
+    case 'low':
+      return '#00ff00';
+    default:
+      return '#6c757d';
+  }
+}
+
+// Cache marker icons by severity so we don't rebuild divIcons every render
+const markerIconCache = {};
+function getMarkerIcon(severity) {
+  const key = (severity || '').toLowerCase();
+  if (!markerIconCache[key]) {
+    markerIconCache[key] = createColorIcon(getSeverityColor(key));
+  }
+  return markerIconCache[key];
+}
+
+function SeverityBadge({ severity }) {
+  const color = getSeverityColor(severity);
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        backgroundColor: color,
+        color: severity === 'medium' ? '#333' : '#fff',
+        fontSize: '11px',
+        fontWeight: 'bold',
+        textTransform: 'uppercase',
+        padding: '2px 8px',
+        borderRadius: '10px',
+        letterSpacing: '0.5px',
+      }}
+    >
+      {severity}
+    </span>
+  );
+}
+
+function IncidentPopup({ incident, onViewDetails }) {
+  const { type, severity, description } = incident;
+  return (
+    <div style={{ minWidth: '180px' }}>
+      <div style={{ marginBottom: '6px' }}>
+        <strong>{getTypeEmoji(type)} {type}</strong>
+      </div>
+      <div style={{ marginBottom: '6px' }}>
+        <SeverityBadge severity={severity} />
+      </div>
+      <div style={{ marginBottom: '10px', fontSize: '13px', color: '#444' }}>
+        {description}
+      </div>
+      <button
+        onClick={() => onViewDetails(incident)}
+        style={{
+          background: '#1d70ff',
+          color: '#fff',
+          border: 'none',
+          padding: '6px 12px',
+          borderRadius: '4px',
+          fontSize: '13px',
+          cursor: 'pointer',
+          width: '100%',
+        }}
+      >
+        View Details
+      </button>
+    </div>
+  );
+}
+
+const POLL_INTERVAL_MS = 5000;
+
+export default function PunjabMap() {
+  const [incidents, setIncidents] = useState([]);
+  const [selectedIncident, setSelectedIncident] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Tracks whether this is the very first fetch, so we only show the
+  // "Loading incidents…" banner once, not on every poll.
+  const isFirstFetch = useRef(true);
+
+  const fetchIncidents = useCallback(async (isMountedRef) => {
+    try {
+      if (isFirstFetch.current) {
+        setLoading(true);
+      }
+      const response = await fetch('http://localhost:8000/api/incidents');
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+      const data = await response.json();
+
+      // Normalize the shape in case the API wraps results, e.g. { incidents: [...] }
+      const list = Array.isArray(data) ? data : data.incidents || [];
+
+      const normalized = list.map((item) => ({
+        id: item.id,
+        position: [Number(item.latitude), Number(item.longitude)],
+        type: item.type,
+        severity: item.severity,
+        description: item.description || '',
+      }));
+
+      if (isMountedRef.current) {
+        setIncidents(normalized);
+        setError(null);
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        setError(err.message);
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setLoading(false);
+      }
+      isFirstFetch.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    const isMountedRef = { current: true };
+
+    // Initial fetch
+    fetchIncidents(isMountedRef);
+
+    // Poll every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchIncidents(isMountedRef);
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      isMountedRef.current = false;
+      clearInterval(intervalId);
+    };
+  }, [fetchIncidents]);
+
+  const handleViewDetails = (incident) => {
+    setSelectedIncident(incident);
+  };
+
+  return (
+    <div style={{ position: 'relative', height: '100vh', width: '100vw' }}>
+      <MapContainer
+        center={[30.9, 75.8]}
+        zoom={7}
+        style={{ height: '100%', width: '100%' }}
+      >
+        <TileLayer
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        />
+
+        {incidents.map((incident) => (
+          <Marker
+            key={incident.id}
+            position={incident.position}
+            icon={getMarkerIcon(incident.severity)}
+          >
+            <Popup>
+              <IncidentPopup incident={incident} onViewDetails={handleViewDetails} />
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+
+      {/* Loading / error banners */}
+      {loading && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            background: '#fff',
+            padding: '6px 12px',
+            borderRadius: '4px',
+            boxShadow: '0 0 4px rgba(0,0,0,0.3)',
+            fontSize: '13px',
+            zIndex: 1000,
+          }}
+        >
+          Loading incidents…
+        </div>
+      )}
+      {error && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 10,
+            left: 10,
+            background: '#d90429',
+            color: '#fff',
+            padding: '6px 12px',
+            borderRadius: '4px',
+            boxShadow: '0 0 4px rgba(0,0,0,0.3)',
+            fontSize: '13px',
+            zIndex: 1000,
+          }}
+        >
+          Failed to load incidents: {error}
+        </div>
+      )}
+
+      {selectedIncident && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setSelectedIncident(null)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              padding: '20px',
+              borderRadius: '8px',
+              width: '300px',
+              maxWidth: '90%',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ margin: '0 0 10px' }}>
+              {getTypeEmoji(selectedIncident.type)} {selectedIncident.type}
+            </h3>
+            <div style={{ marginBottom: '10px' }}>
+              <SeverityBadge severity={selectedIncident.severity} />
+            </div>
+            <p style={{ fontSize: '14px', color: '#444' }}>{selectedIncident.description}</p>
+            <p style={{ fontSize: '12px', color: '#888' }}>
+              Coordinates: {selectedIncident.position[0]}, {selectedIncident.position[1]}
+            </p>
+            <button
+              onClick={() => setSelectedIncident(null)}
+              style={{
+                marginTop: '10px',
+                background: '#333',
+                color: '#fff',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
