@@ -1,0 +1,145 @@
+# FastAPI Incident Reporting Endpoint - Setup Guide
+
+## Files Included
+
+1. **incident_api.py** - FastAPI endpoint (uses original enum values with reasonable defaults)
+2. **C2_model_updated.py** - Updated SQLAlchemy models with `UNCLASSIFIED` severity and `NEW` status
+3. **This guide**
+
+---
+
+## Quick Start
+
+### Option A: Use Updated Models (Recommended)
+Replace your `C2_model.py` with `C2_model_updated.py`:
+- Adds `UNCLASSIFIED` to `IncidentSeverity` enum
+- Adds `NEW` to `IncidentStatus` enum
+- Sets these as default values in the model
+
+### Option B: Use Original Models
+The `incident_api.py` works with your original models using these defaults:
+- `severity = LOW`
+- `status = REPORTED`
+
+---
+
+## Installation
+
+```bash
+pip install fastapi uvicorn sqlalchemy pydantic
+```
+
+---
+
+## Running the Server
+
+```bash
+python incident_api.py
+```
+
+Server starts at `http://localhost:8000`
+
+---
+
+## API Usage
+
+### Endpoint: `POST /api/report`
+
+**Request Body:**
+```json
+{
+  "description": "Traffic accident on Main Street",
+  "latitude": 40.7128,
+  "longitude": -74.0060
+}
+```
+
+**Response (201):**
+```json
+{
+  "id": 1,
+  "type": "other",
+  "severity": "low",
+  "latitude": 40.7128,
+  "longitude": -74.0060,
+  "description": "Traffic accident on Main Street",
+  "people_affected": 0,
+  "status": "reported",
+  "created_at": "2025-08-21T10:30:45.123456"
+}
+```
+
+---
+
+## cURL Example
+
+```bash
+curl -X POST "http://localhost:8000/api/report" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "description": "Building fire reported",
+    "latitude": 51.5074,
+    "longitude": -0.1278
+  }'
+```
+
+---
+
+## Python Client Example
+
+```python
+import requests
+
+url = "http://localhost:8000/api/report"
+payload = {
+    "description": "Flood in residential area",
+    "latitude": 34.0522,
+    "longitude": -118.2437
+}
+
+response = requests.post(url, json=payload)
+incident = response.json()
+print(f"Created Incident ID: {incident['id']}")
+```
+
+---
+
+## Database
+
+- **Default**: SQLite (`incidents.db`)
+- **Customize**: Change `DATABASE_URL` in `incident_api.py`
+
+Example for PostgreSQL:
+```python
+DATABASE_URL = "postgresql://user:password@localhost/incidents_db"
+```
+
+---
+
+## Interactive API Docs
+
+Once running, visit:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+---
+
+## Key Design Decisions
+
+| Feature | Value | Notes |
+|---------|-------|-------|
+| Default Type | `OTHER` | Allows unknown incident types initially |
+| Default Severity | `UNCLASSIFIED`/`LOW` | Can be updated later by admin |
+| Default Status | `NEW`/`REPORTED` | Indicates newly created incident |
+| People Affected | `0` | Can be updated via separate endpoint |
+| Cascade Delete | Enabled | Deleting incident removes associated reports |
+
+---
+
+## Next Steps
+
+1. **Add GET endpoints** to retrieve incidents
+2. **Add PATCH endpoint** to update incident severity/status
+3. **Add authentication** (FastAPI security)
+4. **Add validation** for lat/lon coordinates
+5. **Add image handling** in Report model
